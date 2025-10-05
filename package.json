@@ -6,11 +6,13 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "watch": "node --watch index.js"
+    "watch": "node --watch index.js",
+    "dump": "node src/seeders/historicalExchangeRates.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dayjs": "^1.11.18",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mongoose": "^8.19.0"
