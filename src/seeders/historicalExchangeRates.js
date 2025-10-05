@@ -10,7 +10,7 @@ dotenv.config();
 
 // -- CONFIGURAZIONE ---
 
-const API_KEY = process.env.EXCHANGE_API_KEY;
+const API_KEY = process.env.CURRENCY_API_KEY;
 const BASE_URL = process.env.BASE_URL;
 
 connectDB()
