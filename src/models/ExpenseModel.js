@@ -11,7 +11,6 @@ const expenseSchema = new Schema(
     currency: { type: String, required: true }
   },
   { timestamps: true }
- 
 );
 
 export const Expenses = model('Expenses', expenseSchema);

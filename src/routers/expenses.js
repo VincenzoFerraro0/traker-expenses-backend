@@ -1,5 +1,5 @@
 import express from "express";
-import { Expenses } from "../models/ExpenseModel.js"; // attenzione al default export che avevi, io lo cambio in named
+import { Expenses } from "../models/ExpenseModel.js"; 
 import dayjs from "dayjs";
 import getLatestExchangeRate from "../lib/getLatestExchangeRate.js";
 
@@ -15,20 +15,20 @@ router.get("/", async (req, res) => {
     }
 });
 
-// Validazione dei dati della spesa
+// Validazione dei dati della spesa 
 async function validateExpenseData(expense) {
 
     if (!expense || typeof expense !== 'object') {
         return {
             error: true,
-            message: "Expense data is required and must be an object.",
+            message: "I dati sulle spese sono obbligatori e devono essere un oggetto.",
         }
     }
     // validazione del titolo
     if (typeof expense.title !== "string" || expense.title.trim() === "") {
         return {
             error: true,
-            message: "Title is required and must be a non-empty string.",
+            message: "Il titolo è obbligatorio e deve essere una stringa non vuota.",
         };
     }
     expense.title = expense.title.trim();
@@ -40,7 +40,7 @@ async function validateExpenseData(expense) {
     ) {
         return {
             error: true,
-            message: "Description must be a string.",
+            message: "La descrizione deve essere una stringa.",
         };
     }
     if (expense.description) {
@@ -49,18 +49,18 @@ async function validateExpenseData(expense) {
 
     // Data spesa obbligatoria
     if (!expense.expenseDate) {
-        return { error: true, message: "Expense date is required." };
+        return { error: true, message: "La data della spesa è obbligatoria." };
     }
 
   // Data spesa obbligatoria
   if (!expense.expenseDate) {
-    return { error: true, message: "Expense date is required." };
+    return { error: true, message: "La data della spesa è obbligatoria." };
   }
 
   // Parsing rigoroso con formato YYYY-MM-DD HH:mm:ss
   const expenseDate = dayjs(expense.expenseDate, "YYYY-MM-DD HH:mm:ss", true);
   if (!expenseDate.isValid()) {
-    return { error: true, message: "Expense date must be a valid date in format YYYY-MM-DD HH:mm:ss." };
+    return { error: true, message: "La data della spesa deve essere una data valida nel formato YYYY-MM-DD HH:mm:ss." };
   }
   
   expense.expenseDate = expenseDate.format();
@@ -72,7 +72,7 @@ async function validateExpenseData(expense) {
     ) {
         return {
             error: true,
-            message: "Amount is required and must be a positive number.",
+            message: "L'importo è obbligatorio e deve essere un numero positivo.",
         };
     }
 
@@ -88,7 +88,7 @@ async function validateExpenseData(expense) {
     ) {
         return {
             error: true,
-            message: "Currency is required and must be one of the following: " + validCurrencies.join(", "),
+            message: "La valuta è obbligatoria e deve essere una delle seguenti:" + validCurrencies.join(", "),
         };
     }
 
