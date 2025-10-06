@@ -1,9 +1,39 @@
 import dayjs from "dayjs";
-import getLatestExchangeRate from "../lib/getLatestExchangeRate.js";
+import getLatestExchangeRate from "./getLatestExchangeRate.js";
 import UTC from 'dayjs/plugin/utc.js';
 dayjs.extend(UTC);
 
-export default async function validateExpenseData(expense, isPartialUpdate = false) {
+export async function vallidateCurrency(expense, isPartialUpdate = false) {
+    // Validazione della valuta
+    if (expense.hasOwnProperty('currency')) {
+        const latestExchangeRate = await getLatestExchangeRate();
+        if (latestExchangeRate?.error) {
+            return latestExchangeRate;
+        }
+
+        const validCurrencies = Object.keys(latestExchangeRate.data);
+        if (typeof expense.currency !== "string" || !validCurrencies.includes(expense.currency)) {
+            return {
+                error: true,
+                message: "La valuta deve essere una delle seguenti: " + validCurrencies.join(", "),
+            };
+        }
+        
+        // Validazione OK
+        return { error: false };
+    } else if (!isPartialUpdate) {
+        // Campo obbligatorio mancante in POST
+        return {
+            error: true,
+            message: "La valuta è obbligatoria.",
+        };
+    }
+
+    // Campo non presente in PATCH - OK
+    return { error: false };
+}
+
+export async function validateExpenseData(expense, isPartialUpdate = false) {
 
     delete expense._id;
     delete expense.createdAt;
@@ -104,29 +134,9 @@ export default async function validateExpenseData(expense, isPartialUpdate = fal
     }
 
     // Validazione della valuta (obbligatoria solo in POST)
-    if (expense.hasOwnProperty('currency')) {
-        const latestExchangeRate = await getLatestExchangeRate();
-        if (latestExchangeRate?.error) {
-            return latestExchangeRate;
-        }
-
-        const validCurrencies = Object.keys(latestExchangeRate.data);
-        if (typeof expense.currency !== "string" || !validCurrencies.includes(expense.currency)) {
-            return {
-                error: true,
-                message: "La valuta deve essere una delle seguenti: " + validCurrencies.join(", "),
-            };
-        }
-    } else if (!isPartialUpdate) {
-        // Verifica le valute solo se è un POST
-        const latestExchangeRate = await getLatestExchangeRate();
-        if (latestExchangeRate?.error) {
-            return latestExchangeRate;
-        }
-        return {
-            error: true,
-            message: "La valuta è obbligatoria.",
-        };
+    const currencyValidation = await vallidateCurrency(expense, isPartialUpdate);
+    if (currencyValidation.error) {
+        return currencyValidation;
     }
 
     return expense;

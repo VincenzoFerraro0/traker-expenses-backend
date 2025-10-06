@@ -1,6 +1,3 @@
-// getLatestExchangeRate.js
-
-import connectDB from '../config/db.js';
 import  ExchangeRate  from '../models/ExchangeRateModel.js';
 
 /**
@@ -9,10 +6,8 @@ import  ExchangeRate  from '../models/ExchangeRateModel.js';
  */
 export default async function getLatestExchangeRate() {
     try {
-        // 1. Connessione al Database
-        await connectDB();
 
-        // 2. Trova il più recente per exchange_date
+        //Trova il più recente per exchange_date
         const latestRate = await ExchangeRate.findOne()
             .sort({ exchange_date: -1 }) // Ordina decrescente per data
             .lean();

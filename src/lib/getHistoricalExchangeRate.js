@@ -14,7 +14,7 @@ import ExchangeRate  from '../models/ExchangeRateModel.js';
  */
 export default async function(dateString) {
 
-    // 1. Validazione della data
+    //Validazione della data
     const date = dayjs(dateString, 'YYYY-MM-DD', true); 
     
     const today = dayjs(dayjs().format('YYYY-MM-DD')); 
@@ -33,20 +33,11 @@ export default async function(dateString) {
         };
     }
 
-    // 2. Connessione al Database
-    try {
-        await connectDB(); 
-    } catch (dbError) {
-        return {
-            error: true,
-            message: `Impossibile connettersi al database: ${dbError.message}`
-        };
-    }
 
-    // 3. Preparazione per la Ricerca
+    // Preparazione per la Ricerca
     const simpleDate = date.format('YYYY-MM-DD');
 
-    // 4. Ricerca nel Database
+    // Ricerca nel Database
     try {
         const foundRate = await ExchangeRate.findOne({ 
             exchange_date: simpleDate 

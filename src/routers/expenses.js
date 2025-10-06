@@ -1,7 +1,8 @@
 import express from "express";
 import Expenses from "../models/ExpenseModel.js";
 import mongoose from "mongoose";
-import validateExpenseData from "../lib/validateExpenseData.js";
+import { validateExpenseData, vallidateCurrency } from "../lib/validators.js";
+import convertCurrency from "../lib/convertCurrency.js";
 
 import dayjs from "dayjs";
 import UTC from 'dayjs/plugin/utc.js';
@@ -11,17 +12,100 @@ dayjs.extend(UTC);
 // Crea il router
 const router = express.Router();
 
-// Ottenere tutte le spese
+
+// Ottenere tutte le spese con conversione valuta
 router.get("/", async (req, res) => {
     try {
-        const expenses = await Expenses.find().sort({ expenseDate: -1 });
-        console.log("📦 Expenses trovate:", expenses);
-        res.send(expenses);
+        const { startDate, endDate, baseCurrency = "EUR" } = req.query;
+        let start, end;
+
+        // Validazione delle date se fornite
+        if (startDate) {
+            start = dayjs(startDate).utc(true).startOf("day");
+            if (!start.isValid()) {
+                return res.status(400).send({
+                    error: true,
+                    message: "La data di inizio non è valida."
+                });
+            }
+        }
+
+        if (endDate) {
+            end = dayjs(endDate).utc(true).endOf("day");
+            if (!end.isValid()) {
+                return res.status(400).send({
+                    error: true,
+                    message: "La data di fine non è valida."
+                });
+            }
+        }
+
+        // Validazione della valuta base
+        const currencyValidation = await vallidateCurrency({ currency: baseCurrency }, false);
+        if (currencyValidation.error) {
+            return res.status(400).send(currencyValidation);
+        }
+
+        // Query al database con filtro per date
+        let query = {};
+        if (start || end) {
+            query.expenseDate = {};
+            if (start) {
+                query.expenseDate.$gte = start.toISOString();
+            }
+            if (end) {
+                query.expenseDate.$lte = end.toISOString();
+            }
+        }
+
+        const expenses = await Expenses.find(query).sort({ expenseDate: -1 });
+
+        // Converti gli importi nella valuta base
+        const convertedExpenses = await Promise.all(
+            expenses.map(async (expense) => {
+                const expenseObj = expense.toObject();
+
+                try {
+                    // Converti l'importo usando la data della spesa
+                    const conversion = await convertCurrency(
+                        expense.amount,
+                        expense.currency,
+                        baseCurrency,
+                        expense.expenseDate
+                    );
+
+                    return {
+                        ...expenseObj,
+                        convertedAmount: {
+                            amount: conversion.amount,
+                            currency: conversion.currency,
+                            isEstimated: conversion.isEsteem
+                        }
+                    };
+                } catch (conversionError) {
+                    console.error("⚠️ Errore conversione spesa:", expense._id, conversionError.message);
+                    // In caso di errore nella conversione, mantieni l'importo originale
+                    return {
+                        ...expenseObj,
+                        convertedAmount: {
+                            amount: expense.amount,
+                            currency: expense.currency,
+                            isEstimated: false,
+                            conversionError: true
+                        }
+                    };
+                }
+            })
+        );
+
+        console.log("📦 Expenses trovate:", convertedExpenses.length);
+        res.send(convertedExpenses);
     } catch (error) {
         console.error("❌ Errore GET /expenses:", error);
         res.status(500).send({ error: true, message: error.message });
     }
 });
+
 
 // Ottenere una spesa per ID
 router.get("/:id", async (req, res) => {
@@ -97,8 +181,6 @@ router.post("/", async (req, res) => {
     }
 });
 
-
-
 // Eliminare una spesa per ID
 router.delete("/:id", async (req, res) => {
     const { id } = req.params;
@@ -118,9 +200,6 @@ router.delete("/:id", async (req, res) => {
         res.status(500).send({ error: true, message: error.message });
     }
 });
-
-
-
 
 
 export default router;
