@@ -25,4 +25,4 @@ const ExchangeRateSchema = new Schema({
     }
 });
 // Crea il modello
-export const ExchangeRate = model('ExchangeRate', ExchangeRateSchema);
+export default model('ExchangeRate', ExchangeRateSchema);

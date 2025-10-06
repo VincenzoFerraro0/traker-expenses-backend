@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
 import connectDB from '../config/db.js';
-import { ExchangeRate } from '../models/ExchangeRateModel.js';
+import  ExchangeRate  from '../models/ExchangeRateModel.js';
 
 import dotenv from 'dotenv';
 

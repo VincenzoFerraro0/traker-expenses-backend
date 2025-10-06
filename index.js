@@ -14,7 +14,7 @@ const PORT = process.env.PORT;
 const app = express();
 
 // Connessione al database
-connectDB();
+await connectDB();
 
 // Middleware per il parsing del corpo delle richieste
 app.use(express.json());
@@ -23,7 +23,7 @@ app.use(express.json());
 app.use('/api/exchange-rates', exchangeRatesRouter);
 
 // Rotte per le spese
-app.use('/api/expense', expensesRouter);
+app.use('/api/expenses', expensesRouter);
 
 // // Rotta di test
 // app.get('/', (req, res) => {

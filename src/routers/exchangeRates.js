@@ -23,7 +23,7 @@ router.get('/currency-api-status', async (req, res) => {
 router.get('/latest', async (req, res) => {
    const latestExchangeRate = await getLatestExchangeRate();
     if (latestExchangeRate.error) {
-         return res.status(400).json({ error: latestExchangeRate.message });
+         return res.status(400).send({ error: latestExchangeRate.message });
     }
     return res.send(latestExchangeRate);
 }); 
@@ -36,7 +36,7 @@ router.get('/:dateString', async (req, res) => {
 
     const historicalExchangeRate = await getHistoricalExchangeRate(dateString);
     if (historicalExchangeRate.error) {
-         return res.status(400).json({ error: historicalExchangeRate.message });
+         return res.status(400).send({ error: historicalExchangeRate.message });
     }
     return res.send(historicalExchangeRate);
 });

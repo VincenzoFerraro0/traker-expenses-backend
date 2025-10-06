@@ -1,7 +1,7 @@
 // getLatestExchangeRate.js
 
 import connectDB from '../config/db.js';
-import { ExchangeRate } from '../models/ExchangeRateModel.js';
+import  ExchangeRate  from '../models/ExchangeRateModel.js';
 
 /**
  * Recupera l'ultimo tasso di cambio disponibile dal database.

@@ -4,7 +4,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 dayjs.extend(customParseFormat);
 
 import connectDB from '../config/db.js';
-import { ExchangeRate } from '../models/ExchangeRateModel.js'; 
+import ExchangeRate  from '../models/ExchangeRateModel.js'; 
 // Assicurati che questi percorsi di importazione siano corretti per la tua struttura di progetto!
 
 /**
