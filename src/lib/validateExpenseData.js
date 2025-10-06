@@ -51,7 +51,7 @@ export default async function validateExpenseData(expense, isPartialUpdate = fal
 
     // Validazione della descrizione (sempre opzionale)
     if (expense.hasOwnProperty('description')) {
-        if (expense.description !== null && expense.description !== undefined) {
+        if (expense.description !== null && expense.description !== undefined && expense.description !== "") {
             if (typeof expense.description !== "string" || expense.description.trim() === "") {
                 return {
                     error: true,
@@ -59,7 +59,13 @@ export default async function validateExpenseData(expense, isPartialUpdate = fal
                 };
             }
             expense.description = expense.description.trim();
+        } else {
+            // Imposta a null se non fornita, vuota, null o undefined
+            expense.description = null;
         }
+    } else if (!isPartialUpdate) {
+        // In POST, se non viene fornita, impostala a null
+        expense.description = null;
     }
 
     // Validazione della data (obbligatoria solo in POST)
@@ -71,9 +77,9 @@ export default async function validateExpenseData(expense, isPartialUpdate = fal
         // Parsing rigoroso con formato YYYY-MM-DD HH:mm:ss
         const expenseDate = dayjs(expense.expenseDate, "YYYY-MM-DD HH:mm:ss", true);
         if (!expenseDate.isValid()) {
-            return { 
-                error: true, 
-                message: "La data della spesa deve essere una data valida nel formato YYYY-MM-DD HH:mm:ss." 
+            return {
+                error: true,
+                message: "La data della spesa deve essere una data valida nel formato YYYY-MM-DD HH:mm:ss."
             };
         }
 
