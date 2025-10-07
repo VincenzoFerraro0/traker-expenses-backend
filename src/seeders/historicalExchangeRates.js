@@ -1,8 +1,8 @@
-// QUESTO SCRIPT RECUPERA I TASSI DI CAMBIO STORICI E LI INSERISCE NEL DATABASE
+// QUESTO SCRIPT RECUPERA I TASSI DI CAMBIO PER UNA DATA SPECIFICA E LI INSERISCE NEL DATABASE
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
 import connectDB from '../config/db.js';
-import  ExchangeRate  from '../models/ExchangeRateModel.js';
+import ExchangeRate from '../models/ExchangeRateModel.js';
 
 import dotenv from 'dotenv';
 
@@ -13,9 +13,10 @@ dotenv.config();
 const API_KEY = process.env.CURRENCY_API_KEY;
 const BASE_URL = process.env.BASE_URL;
 
-connectDB()
+connectDB();
+
 /**
- * Recupera i tassi di cambio storici per una data specifica dall'API usando 'fetch'.
+ * Recupera i tassi di cambio per una data specifica dall'API usando 'fetch'.
  * @param {string} date - La data nel formato 'YYYY-MM-DD' per la richiesta API.
  * @returns {Object|null} I dati del tasso di cambio o null in caso di errore.
  */
@@ -33,19 +34,19 @@ async function fetchRatesForDate(date) {
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            console.error(`<- Errore HTTP ${response.status} per il giorno ${date}.`);
+            console.error(`❌ Errore HTTP ${response.status} per il giorno ${date}.`);
             return null;
         }
         const responseData = await response.json();
         if (responseData && responseData.data) {
-            console.log(`<- Dati ricevuti con successo per il giorno ${date}.`);
+            console.log(`✅ Dati ricevuti con successo per il giorno ${date}.`);
             return responseData;
         } else {
-            console.warn(`<- Risposta API inattesa o incompleta per il giorno ${date}.`);
+            console.warn(`⚠️  Risposta API inattesa o incompleta per il giorno ${date}.`);
             return null;
         }
     } catch (error) {
-        console.error(`<- Errore di richiesta (fetch) per il giorno ${date}:`, error.message);
+        console.error(`❌ Errore di richiesta (fetch) per il giorno ${date}:`, error.message);
         return null;
     }
 }
@@ -74,63 +75,88 @@ async function saveRates(ratesData, dateString) {
 
     try {
         await newRate.save();
-        console.log(`   [SUCCESS] Documento salvato per la data: ${dateString}`);
+        console.log(`✅ [SUCCESS] Documento salvato per la data: ${dateString}`);
+        return true;
     } catch (error) {
         if (error.code === 11000) { // Codice per errore di duplicato (unique: true su meta.last_updated_at)
-            console.warn(`   [SKIP] Documento per la data ${dateString} già presente.`);
+            console.warn(`⚠️  [SKIP] Documento per la data ${dateString} già presente.`);
+            return false;
         } else {
-            console.error(`   [ERROR] Errore durante il salvataggio dei tassi di ${dateString}:`, error.message);
+            console.error(`❌ [ERROR] Errore durante il salvataggio dei tassi di ${dateString}:`, error.message);
+            return false;
         }
     }
 }
 
 /**
- * Funzione principale per eseguire il fetch dei dati storici nell'ultimo anno.
+ * Funzione principale per eseguire il fetch dei dati per una data specifica.
+ * @param {string} targetDate - La data da recuperare in formato 'YYYY-MM-DD'. Se non fornita, usa la data odierna.
  */
-async function runHistoricDataFetch() {
+async function fetchDataForSpecificDate(targetDate = null) {
     await connectDB();
 
-    const daysToFetch = 365;
-    // Inizia da ieri per avere dati "storici" completi.
-    let currentDate = dayjs().subtract(1, 'day'); 
-    // Pausa minima tra le richieste per rispettare il limite di 10 al minuto (1 richiesta ogni 6 secondi)
-    const RATE_LIMIT_PAUSE_MS = 6100; 
+    // Se non viene fornita una data, usa la data odierna
+    const dateToFetch = targetDate ? dayjs(targetDate) : dayjs();
+    const dateStringApi = dateToFetch.format('YYYY-MM-DD');
+    const documentTitleDate = dateToFetch.startOf('day').toISOString();
 
-    console.log(`\n--- Avvio del recupero dei dati storici per ${daysToFetch} giorni ---`);
-    console.log(`--- Pausa tra richieste: ${RATE_LIMIT_PAUSE_MS}ms (per limite API 10/minuto) ---`);
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📊 Avvio recupero dati per la data: ${dateStringApi}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
-    for (let i = 0; i < daysToFetch; i++) {
-        const dateStringApi = currentDate.format('YYYY-MM-DD');
-        // Usa il formato ISO completo per il controllo di unicità
-        const documentTitleDate = currentDate.startOf('day').toISOString();
-
-        // 1. Controlla se il dato è già presente nel DB usando il formato titolo/data
-        const existingData = await ExchangeRate.findOne({ 'meta.last_updated_at': documentTitleDate });
-        if (existingData) {
-            console.warn(`-> [SKIP] Documento per la data ${dateStringApi} trovato nel DB. Passaggio al giorno precedente.`);
-            currentDate = currentDate.subtract(1, 'day');
-            continue;
-        }
-
-        // 2. Recupera i dati dall'API
-        const ratesData = await fetchRatesForDate(dateStringApi);
-
-        // 3. Salva nel DB con la data formattata come "titolo"
-        if (ratesData) {
-            await saveRates(ratesData, dateStringApi);
-        }
-
-        // Passaggio al giorno precedente
-        currentDate = currentDate.subtract(1, 'day');
-        
-        // Pausa per rispettare i limiti di rate limit dell'API
-        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_PAUSE_MS)); 
+    // 1. Controlla se il dato è già presente nel DB
+    const existingData = await ExchangeRate.findOne({ 'meta.last_updated_at': documentTitleDate });
+    if (existingData) {
+        console.warn(`⚠️  [SKIP] Documento per la data ${dateStringApi} già presente nel database.`);
+        console.log(`ℹ️  Usa l'opzione --force per sovrascrivere il dato esistente.\n`);
+        await mongoose.disconnect();
+        console.log('🔌 Disconnesso da MongoDB.');
+        return;
     }
 
-    console.log('\n--- Recupero dati storici completato! ---');
+    // 2. Recupera i dati dall'API
+    const ratesData = await fetchRatesForDate(dateStringApi);
+
+    // 3. Salva nel DB
+    if (ratesData) {
+        const saved = await saveRates(ratesData, dateStringApi);
+        if (saved) {
+            console.log(`\n✅ Operazione completata con successo!`);
+        }
+    } else {
+        console.error(`\n❌ Impossibile recuperare i dati per la data ${dateStringApi}.`);
+    }
+
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     await mongoose.disconnect();
-    console.log('Disconnesso da MongoDB.');
+    console.log('🔌 Disconnesso da MongoDB.');
+}
+
+// Gestione degli argomenti da linea di comando
+const args = process.argv.slice(2);
+let targetDate = null;
+
+// Cerca l'argomento --date o prende il primo argomento come data
+const dateArgIndex = args.indexOf('--date');
+if (dateArgIndex !== -1 && args[dateArgIndex + 1]) {
+    targetDate = args[dateArgIndex + 1];
+} else if (args.length > 0 && !args[0].startsWith('--')) {
+    // Se il primo argomento non è un flag, usalo come data
+    targetDate = args[0];
+}
+
+// Valida il formato della data se fornita
+if (targetDate && !dayjs(targetDate, 'YYYY-MM-DD', true).isValid()) {
+    console.error('❌ Formato data non valido. Usa il formato YYYY-MM-DD (es. 2024-01-15)');
+    process.exit(1);
 }
 
 // Avvia lo script
-runHistoricDataFetch();
+console.log(`\n🚀 Avvio script di recupero tassi di cambio...`);
+if (targetDate) {
+    console.log(`📅 Data specificata: ${targetDate}`);
+} else {
+    console.log(`📅 Nessuna data specificata, uso la data odierna: ${dayjs().format('YYYY-MM-DD')}`);
+}
+
+fetchDataForSpecificDate(targetDate);

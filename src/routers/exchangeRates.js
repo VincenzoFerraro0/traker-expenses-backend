@@ -30,16 +30,15 @@ router.get('/latest', async (req, res) => {
 
 
 // Rotta per ottenere il tasso di cambio storico per una data specifica
-router.get('/:dateString', async (req, res) => {
-  
-    const { dateString } = req.params;
-
-    const historicalExchangeRate = await getHistoricalExchangeRate(dateString);
-    if (historicalExchangeRate.error) {
-         return res.status(400).send({ error: historicalExchangeRate.message });
+// Nei tuoi controller o route
+router.get('/:date', async (req, res) => {
+    const result = await getHistoricalExchangeRate(req.params.date);
+    
+    if (result.error) {
+        return res.status(400).json(result);
     }
-    return res.send(historicalExchangeRate);
+    
+    res.json(result);
 });
-
 
 export default router;
