@@ -5,6 +5,7 @@ import connectDB from './src/config/db.js';
 //ROTTE
 import expensesRouter from './src/routers/expenses.js'
 import exchangeRatesRouter from './src/routers/exchangeRates.js';
+import categoriesRouter from './src/routers/categories.js';
 
 // Configurazione delle variabili d'ambiente
 
@@ -24,6 +25,9 @@ app.use('/api/exchange-rates', exchangeRatesRouter);
 
 // Rotte per le spese
 app.use('/api/expenses', expensesRouter);
+
+//Rotte per le categorie
+app.use('/api/categories', categoriesRouter);
 
 // // Rotta di test
 // app.get('/', (req, res) => {

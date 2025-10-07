@@ -6,7 +6,7 @@ dayjs.extend(customParseFormat);
 
 dotenv.config();
 
-import ExchangeRate from '../models/ExchangeRateModel.js';
+import ExchangeRate from '../models/exchangeRateModel.js';
 
 // Configurazione API
 const API_KEY = process.env.CURRENCY_API_KEY;

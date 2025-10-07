@@ -1,5 +1,5 @@
 import express from "express";
-import Expenses from "../models/ExpenseModel.js";
+import Expenses from "../models/expenseModel.js";
 import mongoose from "mongoose";
 import { validateExpenseData, vallidateCurrency } from "../lib/validators.js";
 import convertCurrency from "../lib/convertCurrency.js";

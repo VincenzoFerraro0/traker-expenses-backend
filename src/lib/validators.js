@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import getLatestExchangeRate from "./getLatestExchangeRate.js";
 import UTC from 'dayjs/plugin/utc.js';
+import mongoose from "mongoose";
 dayjs.extend(UTC);
 
 export async function vallidateCurrency(expense, isPartialUpdate = false) {
@@ -18,7 +19,7 @@ export async function vallidateCurrency(expense, isPartialUpdate = false) {
                 message: "La valuta deve essere una delle seguenti: " + validCurrencies.join(", "),
             };
         }
-        
+
         // Validazione OK
         return { error: false };
     } else if (!isPartialUpdate) {
@@ -140,4 +141,64 @@ export async function validateExpenseData(expense, isPartialUpdate = false) {
     }
 
     return expense;
+}
+
+export async function validateCategory(category, isPartialUpdate = false) {
+
+    const validKeys = ["name", "parentCategoryId"];
+
+    // Rimuovi eventuali chiavi non ammesse
+    Object.keys(category).forEach((key) => {
+        if (!validKeys.includes(key)) {
+            delete category[key];
+        }
+    });
+
+    // Controllo se l'oggetto categoria è valido
+    if (!category || typeof category !== "object") {
+        return {
+            error: true,
+            message: "I dati sulle categorie sono obbligatori e devono essere un oggetto.",
+        };
+    }
+
+    // PATCH deve avere almeno un campo da aggiornare
+    if (isPartialUpdate && Object.keys(category).length === 0) {
+        return {
+            error: true,
+            message: "Devi fornire almeno un campo da aggiornare.",
+        };
+    }
+
+    // Validazione del name (obbligatorio in POST)
+    if (category.hasOwnProperty("name")) {
+        if (typeof category.name !== "string" || category.name.trim() === "") {
+            return {
+                error: true,
+                message: "Il titolo deve essere una stringa non vuota.",
+            };
+        }
+        category.name = category.name.trim();
+    } else if (!isPartialUpdate) {
+        return {
+            error: true,
+            message: "Il titolo è obbligatorio.",
+        };
+    }
+
+    // Validazione parentCategoryId (se presente)
+    if (category.hasOwnProperty("parentCategoryId")) {
+        if (
+            category.parentCategoryId !== null &&
+            !mongoose.Types.ObjectId.isValid(category.parentCategoryId)
+        ) {
+            return {
+                error: true,
+                message: "L'ID della categoria padre non è valido.",
+            };
+        }
+    }
+
+    // Tutto ok, ritorno l'oggetto "pulito"
+    return category;
 }
