@@ -118,7 +118,7 @@ export default async function getHistoricalExchangeRate(dateString) {
         }).lean();
 
         if (foundRate) {
-            console.log(`✅ Tasso trovato nel database per la data: ${simpleDate}`);
+           
             return {
                 error: false,
                 meta: foundRate.exchange_date,

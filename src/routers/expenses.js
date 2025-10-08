@@ -128,7 +128,20 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-// Aggiornare una spesa per ID
+// Creare una nuova spesa
+router.post("/", async (req, res) => {
+    try {
+        const newExpense = await validateExpenseData(req.body);
+        if (newExpense.error) {
+            return res.status(400).send(newExpense);
+        }
+        const createdExpense = await Expenses.create(newExpense);
+        res.status(201).send(createdExpense);
+    } catch (error) {
+        res.status(500).send({ error: true, message: error.message });
+    }
+})
+
 // Aggiornare una spesa per ID
 router.patch("/:id", async (req, res) => {
     const { id } = req.params;
@@ -163,20 +176,6 @@ router.patch("/:id", async (req, res) => {
         res.send(updatedExpense);
     } catch (error) {
         console.error("❌ Errore PATCH /expenses/:id:", error);
-        res.status(500).send({ error: true, message: error.message });
-    }
-});
-
-// Creare una nuova spesa
-router.post("/", async (req, res) => {
-    try {
-        const newExpense = await validateExpenseData(req.body);
-        if (newExpense.error) {
-            return res.status(400).send(newExpense);
-        }
-        const createdExpense = await Expenses.create(newExpense);
-        res.status(201).send(createdExpense);
-    } catch (error) {
         res.status(500).send({ error: true, message: error.message });
     }
 });

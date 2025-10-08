@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import getLatestExchangeRate from "./getLatestExchangeRate.js";
 import UTC from 'dayjs/plugin/utc.js';
 import mongoose from "mongoose";
+import Categories from "../models/categoriesModel.js"
 dayjs.extend(UTC);
 
 export async function vallidateCurrency(expense, isPartialUpdate = false) {
@@ -40,7 +41,7 @@ export async function validateExpenseData(expense, isPartialUpdate = false) {
     delete expense.createdAt;
     delete expense.updatedAt;
 
-    const validKeys = ["title", "description", "expenseDate", "amount", "currency"];
+    const validKeys = ["title", "description", "expenseDate", "amount", "currency", "categoryId"];
     // Rimuovi chiavi non valide
     Object.keys(expense).forEach((key) => {
         if (!validKeys.includes(key)) {
@@ -140,12 +141,38 @@ export async function validateExpenseData(expense, isPartialUpdate = false) {
         return currencyValidation;
     }
 
+    // Validazione Categoria
+    if (!expense.categoryId && expense.categoryId !== 0) {
+        expense.categoryId = null;
+    } else {
+        // Verifica che la categoria esista
+        const categories = await Categories.find();
+        const categoryExists = categories.some(cat => cat._id.toString() === expense.categoryId.toString());
+
+        if (!categoryExists) {
+            return {
+                error: true,
+                message: "La categoria specificata non esiste.",
+            };
+        }
+
+        // Validazione ObjectId
+        if (!mongoose.Types.ObjectId.isValid(expense.categoryId)) {
+            return {
+                error: true,
+                message: "L'ID della categoria non è valido.",
+            };
+        }
+    }
+
+
     return expense;
 }
-
 export async function validateCategory(category, isPartialUpdate = false) {
 
-    const validKeys = ["name", "parentCategoryId"];
+    const categories = await Categories.find();
+
+    const validKeys = ["_id", "name", "parentCategoryId"];
 
     // Rimuovi eventuali chiavi non ammesse
     Object.keys(category).forEach((key) => {
@@ -160,6 +187,33 @@ export async function validateCategory(category, isPartialUpdate = false) {
             error: true,
             message: "I dati sulle categorie sono obbligatori e devono essere un oggetto.",
         };
+    }
+
+    if (!category._id && category._id !== 0) {
+        category._id = null;
+    } else {
+        const categoryId = category._id;
+        const availableIds = categories.reduce((acc, cat) => {
+            if (cat.parentCategoryId === null) {
+                return acc;
+            }
+            const parentCategory = categories.find(c => c._id.toString() === cat.parentCategoryId.toString());
+            if (parentCategory) {
+                return acc;
+            }
+            if (acc.includes(cat.parentCategoryId.toString())) {
+                return acc;
+            }
+            return [...acc, cat.parentCategoryId.toString()];
+        }, []);
+
+        if (!availableIds.includes(categoryId.toString())) {
+            return {
+                error: true,
+                message: 'Categoria non disponibile'
+            };
+        }
+        category._id = categoryId;
     }
 
     // PATCH deve avere almeno un campo da aggiornare

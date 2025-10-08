@@ -8,7 +8,11 @@ const expenseSchema = new Schema(
     description: { type: String },
     expenseDate: { type: Date, required: true },
     amount: { type: Number, required: true },
-    currency: { type: String, required: true }
+    currency: { type: String, required: true },
+    categoryId: {
+        type: Schema.Types.ObjectId,
+        ref: "Categories", // collegamento alla Category
+    }
   },
   { timestamps: true }
 );

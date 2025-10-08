@@ -22,30 +22,43 @@ router.get("/", async (req, res) => {
             return res.send(categories);
         }
 
-        // Funzione ricorsiva per costruire l'albero delle categorie
-        const filterCategoriesParentId = (parentCategoryId) => {
-            const filteredCategories = categories
+        // Individuazione categorie con parent non esistente
+        const unknownCategories = categories.reduce((acc, cat) => {
+            if (!cat.parentCategoryId) return acc;
+            const parentExists = categories.find(c => c._id.toString() === cat.parentCategoryId.toString());
+            const alreadyAdded = acc.find(c => c._id.toString() === cat.parentCategoryId.toString());
+
+            if (!parentExists && !alreadyAdded) {
+                acc.push({
+                    _id: cat.parentCategoryId,
+                    name: "Unknown Category",
+                    parentCategoryId: null
+                });
+            }
+            return acc;
+        }, []);
+
+        const allCategories = [...categories, ...unknownCategories];
+
+        // Costruzione albero categorie
+        const buildTree = (parentId = null) => {
+            return allCategories
                 .filter(cat => {
-                    // Gestione di parentCategoryId null o undefined
-                    if (!parentCategoryId) return !cat.parentCategoryId;
-                    return cat.parentCategoryId?.toString() === parentCategoryId;
+                    if (!parentId) return !cat.parentCategoryId;
+                    return cat.parentCategoryId?.toString() === parentId.toString();
                 })
                 .map(cat => {
-                    // Ricorsione per trovare le sottocategorie
-                    const subCategories = filterCategoriesParentId(cat._id.toString());
+                    const subCategories = buildTree(cat._id.toString());
                     return {
                         _id: cat._id,
                         name: cat.name,
                         parentCategoryId: cat.parentCategoryId || null,
-                        subCategories: subCategories.length === 0 ? null : subCategories
+                        subCategories: subCategories.length ? subCategories : null
                     };
                 });
+        };
 
-            return filteredCategories;
-        }
-
-
-        res.send(filterCategoriesParentId(null));
+        res.send(buildTree());
 
     } catch (error) {
         console.error("❌ Errore GET /categories:", error);
@@ -75,16 +88,25 @@ router.get("/:id", async (req, res) => {
 });
 
 // Creare una nuova Categoria ✅
+// Creare una nuova Categoria ✅
 router.post("/", async (req, res) => {
     try {
         const newCategory = await validateCategory(req.body);
+
         if (newCategory.error) {
-            return res.status(400).send(newCategory);
+            return res.status(400).json(newCategory);
         }
-        const createdExpense = await Categories.create(newCategory);
-        res.status(201).send(createdExpense);
+
+        const createdCategory = await Categories.create(newCategory);
+
+        res.status(201).json({
+            success: true,
+            message: "Categoria creata con successo.",
+            data: createdCategory,
+        });
     } catch (error) {
-        res.status(500).send({ error: true, message: error.message });
+        console.error("❌ Errore POST /categories:", error);
+        res.status(500).json({ error: true, message: error.message });
     }
 });
 
@@ -94,15 +116,15 @@ router.patch("/:id", async (req, res) => {
 
     // Controllo se id è un ObjectId valido
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).send({ error: true, message: "ID non valido." });
+        return res.status(400).json({ error: true, message: "ID non valido." });
     }
 
     try {
         // Valida i dati in ingresso (solo i campi forniti)
-        const updateData = await validateCategory(req.body, true); // true indica validazione parziale
+        const updateData = await validateCategory(req.body, true); // true = aggiornamento parziale
 
         if (updateData.error) {
-            return res.status(400).send(updateData);
+            return res.status(400).json(updateData);
         }
 
         // Aggiorna solo i campi forniti
@@ -110,49 +132,44 @@ router.patch("/:id", async (req, res) => {
             id,
             { $set: updateData },
             {
-                new: true,        // Restituisce il documento aggiornato
-                runValidators: true  // Esegue i validatori dello schema
+                new: true,         // Restituisce il documento aggiornato
+                runValidators: true // Rispetta i validatori dello schema
             }
         );
 
         if (!updatedCategory) {
-            return res.status(404).send({ error: true, message: "Spesa non trovata." });
-        }
-
-        res.send(updatedCategory);
-    } catch (error) {
-        console.error("❌ Errore PATCH /categories/:id:", error);
-        res.status(500).send({ error: true, message: error.message });
-    }
-});
-
-// Eliminare una Categoria per ID
-router.delete("/:id", async (req, res) => {
-    const categoryId = req.params.id;
-
-    try {
-        // Trova la categoria da eliminare
-        const categoryToDelete = await Categories.findById(categoryId);
-        if (!categoryToDelete) {
             return res.status(404).json({ error: true, message: "Categoria non trovata." });
         }
 
-        // Trova tutte le sottocategorie della categoria da eliminare
-        const subCategories = await Categories.find({ parentCategoryId: categoryId });
-
-        // Riassegna il parentCategoryId delle sottocategorie
-        for (const subCat of subCategories) {
-            subCat.parentCategoryId = categoryToDelete.parentCategoryId || null;
-            await subCat.save();
-        }
-
-        // Elimina la categoria
-        await Categories.findByIdAndDelete(categoryId);
-
-        res.json({ error: false, message: "Categoria eliminata e sottocategorie riassegnate correttamente." });
+        res.json({
+            success: true,
+            message: "Categoria aggiornata con successo.",
+            data: updatedCategory,
+        });
     } catch (error) {
-        console.error("❌ Errore DELETE /categories/:id:", error);
+        console.error("❌ Errore PATCH /categories/:id:", error);
         res.status(500).json({ error: true, message: error.message });
+    }
+});
+
+
+// Eliminare una Categoria per ID
+router.delete("/:id", async (req, res) => {
+    const { id } = req.params;
+
+    //controllo se id è un ObjectId valido
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).send({ error: true, message: "ID non valido." });
+    }
+    // Prova a trovare ed eliminare la spesa
+    try {
+        const deletedCategory = await Categories.findByIdAndDelete(id);
+        if (!deletedCategory) {
+            return res.status(404).send({ error: true, message: "Categoria non trovata." });
+        }
+        res.send({ message: "Categoria eliminata con successo.", deletedExpense });
+    } catch (error) {
+        res.status(500).send({ error: true, message: error.message });
     }
 });
 
